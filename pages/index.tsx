@@ -231,33 +231,18 @@ export default function Home() {
 
   // Charger le SDK Spotify Web Playback
   useEffect(() => {
-    console.log("[Pododify] useEffect session:", session);
-    if (!session) return;
-    if (player) {
-      console.log("[Pododify] Player déjà initialisé");
-      return;
-    }
+    if (!session || !(window as any).Spotify) return;
+    if (player) return;
+
     const token = session.accessToken;
-    if (!token) {
-      console.log("[Pododify] Token d'accès manquant");
-      return;
-    }
+    if (!token) return;
 
-    // Vérifier si le script est déjà injecté
-    if (!document.getElementById('spotify-sdk')) {
-      console.log("[Pododify] Injection du script Spotify Web Playback SDK...");
-      const script = document.createElement('script');
-      script.id = 'spotify-sdk';
-      script.src = 'https://sdk.scdn.co/spotify-player.js';
-      script.async = true;
-      document.body.appendChild(script);
-    } else {
-      console.log("[Pododify] Script SDK déjà présent dans le DOM");
-    }
+    const script = document.createElement('script');
+    script.src = 'https://sdk.scdn.co/spotify-player.js';
+    script.async = true;
+    document.body.appendChild(script);
 
-    // Attendre que le SDK soit prêt
     (window as any).onSpotifyWebPlaybackSDKReady = () => {
-      console.log("[Pododify] SDK Spotify prêt, initialisation du player...");
       const _player = new (window as any).Spotify.Player({
         name: 'Pododify Web Player',
         getOAuthToken: (cb: any) => { cb(token); },
@@ -268,16 +253,14 @@ export default function Home() {
       _player.addListener('ready', ({ device_id }: any) => {
         setDeviceId(device_id);
         setIsWebPlaybackReady(true);
-        console.log('[Pododify] Web Playback SDK prêt, device_id:', device_id);
+        console.log('Web Playback SDK prêt, device_id:', device_id);
       });
       _player.addListener('not_ready', () => {
         setIsWebPlaybackReady(false);
         setDeviceId(null);
-        console.log('[Pododify] Player non prêt');
       });
       _player.addListener('player_state_changed', (state: any) => {
         setIsPlaying(!!state && !state.paused);
-        console.log('[Pododify] Changement d\'état du player', state);
       });
       _player.connect();
     };
