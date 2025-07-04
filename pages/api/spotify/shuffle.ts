@@ -4,7 +4,7 @@ import { getToken } from 'next-auth/jwt';
 const secret = process.env.NEXTAUTH_SECRET;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
+  if (req.method !== 'PUT') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
@@ -14,30 +14,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ message: "Token d'accès manquant" });
     }
 
-    // Récupérer l'URI personnalisée, la liste d'URIs et le deviceId envoyés par le client
-    const { uri, uris, deviceId } = req.body;
-    let body: any = {};
-    if (uris && Array.isArray(uris) && uris.length > 0) {
-      body.uris = uris;
-      body.position_ms = 0;
-    } else if (uri) {
-      if (uri.startsWith('spotify:track:')) {
-        body.uris = [uri];
-      } else {
-        body.context_uri = uri;
-        body.offset = { position: 0 };
-        body.position_ms = 0;
-      }
-    } else {
-      body.context_uri = 'spotify:playlist:37i9dQZF1DX3PFzdbtx1Us';
-      body.offset = { position: 0 };
-      body.position_ms = 0;
+    const { state, deviceId } = req.query;
+    if (typeof state !== 'string') {
+      return res.status(400).json({ message: 'Paramètre state manquant' });
     }
 
-    // Si deviceId fourni, transférer la lecture sur ce device
-    let url = 'https://api.spotify.com/v1/me/player/play';
-    if (deviceId) {
-      url += `?device_id=${deviceId}`;
+    let url = `https://api.spotify.com/v1/me/player/shuffle?state=${state}`;
+    if (deviceId && typeof deviceId === 'string') {
+      url += `&device_id=${deviceId}`;
     }
 
     const response = await fetch(url, {
@@ -46,7 +30,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         'Authorization': `Bearer ${token.accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
